@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title>Calculator</title>
+        <style>
+            body {
+                background-color: rgb(85, 85, 85);
+            }
+
+            #ip_exp {
+                background-color: rgb(96, 112, 70);
+                border: none;
+                font-size: 40px;
+                font-family: Consolas;
+                width: 90%;
+                margin-top: 30px;
+                padding-top: 3px;
+                padding-bottom: 2px;
+                color: black;
+                padding-left: 6px;
+                padding-right: 6px;
+            }
+
+            #op_console {
+                background-color: rgb(96, 112, 70);
+                border: none;
+                font-size: 40px;
+                width: 90%;
+                font-family: Consolas;
+                margin-bottom: 100px;
+                padding-top: 3px;
+                padding-bottom: 5px;
+                color: black;
+                text-align: right;
+                padding-left: 6px;
+                padding-right: 6px;
+            }
+
+            button {
+                height: 50px;
+                width: 70px;
+                margin: 4px;
+                background-color: rgb(45, 45, 45);
+                border: none;
+                font-size: 25px;
+                color: white;
+                border-radius: 7px;
+            }
+            button:focus {
+                outline: none;
+            }
+            .top_row_btn {
+                width: 152px;
+                color: rgb(255, 0, 106);
+            }
+            .optr {
+                color: turquoise;
+            }
+            .spcl {
+                color: yellow;
+            }
+            #fullscreen {
+                margin-top: 50px;
+                width: 316px;
+            }
+        </style>
+        <script>
+            const MAX_IP_EXP_DISPLAY_SIZE = 11;
+            const MAX_OP_ANS_DISPLAY_SIZE = 11;
+
+            let cursor_flag = 0;
+            let cursor_enabled = 1;
+            let current_ip_query = "";
+            let prev_ans = 0;
+            let fullscreen_enabled = 0;
+
+            function cursor_blink() {
+                let ip_exp = document.querySelector("#ip_exp");
+                if(cursor_enabled) {
+                    if(cursor_flag) {
+                        ip_exp.value = ip_exp.value.slice(0, -1);
+                        cursor_flag = 0;
+                    } else {
+                        ip_exp.value = ip_exp.value + '_';
+                        cursor_flag = 1;
+                    }
+                }
+            }
+
+            function update_ip_exp() {
+                let ip_exp = document.querySelector("#ip_exp");
+                if(cursor_flag) {
+                    ip_exp.value = current_ip_query.slice(-MAX_IP_EXP_DISPLAY_SIZE, current_ip_query.length) + '_';
+                } else {
+                    ip_exp.value = current_ip_query.slice(-MAX_IP_EXP_DISPLAY_SIZE, current_ip_query.length);
+                }
+            }
+
+            function del_key_pressed() {
+                let char_size = 1;
+                if(current_ip_query.length !== 0) {
+                //if(!((ip_exp.value.length === 0) || ((ip_exp.value.length === 1) && (ip_exp.value.slice(-1, ip_exp.value.length) === '_')))) {
+                    if(current_ip_query.slice(-1, current_ip_query.length) === 's') {
+                    //if((ip_exp.value.slice(-1, ip_exp.value.length) === 's') || ((ip_exp.value.slice(-1, ip_exp.value.length) === '_') && (ip_exp.value.slice(-2, ip_exp.value.length - 1) === 's'))) {
+                        char_size = 3;
+                    }
+                    current_ip_query = current_ip_query.slice(0, -char_size);
+                    update_ip_exp();
+                }
+            }
+
+            function all_clear_key_pressed() {
+                current_ip_query = "";
+                update_ip_exp();
+                document.querySelector('#op_console').value = "";
+            }
+
+            function calc() {
+                let final_ip_exp = current_ip_query;
+                let truncated_sign_figs_count = 0;
+                let ans_str = "";
+                let float_point_reached = 0;
+                let truncated_ans_str = "";
+
+                try {
+                    final_ip_exp = final_ip_exp.replaceAll('Ans', ' ' + prev_ans + ' ');
+                    final_ip_exp = final_ip_exp.replaceAll('\u00F7', '/');
+                    final_ip_exp = final_ip_exp.replaceAll('\u00D7', '*');
+                    final_ip_exp = final_ip_exp.replaceAll('\u2212', '-');
+                    final_ip_exp = final_ip_exp.replaceAll('\u002B', '+');
+                    final_ip_exp = final_ip_exp.replaceAll('^', '**');
+                    prev_ans = eval(final_ip_exp);
+                    cursor_enabled = 0;
+                    if(cursor_flag) {
+                        ip_exp.value = ip_exp.value.slice(0, -1);
+                        cursor_flag = 0;
+                    }
+                    if(String(prev_ans).length <= MAX_OP_ANS_DISPLAY_SIZE) {
+                        document.querySelector('#op_console').value = prev_ans;
+                    } else {
+                        ans_str = String(prev_ans)
+                        for(i = 0; i < ans_str.length; i = i + 1) {
+                            if(i < 4) {
+                                if(ans_str.charAt(i) === '.') {
+                                    float_point_reached = 1;
+                                }
+                                truncated_ans_str = truncated_ans_str + ans_str.charAt(i);
+                            } else {
+                                if(float_point_reached && (i < 8)) {
+                                    truncated_ans_str = truncated_ans_str + ans_str.charAt(i);
+                                } else if(float_point_reached && (i === 8)) {
+                                    truncated_ans_str = truncated_ans_str + '...';
+                                    document.querySelector('#op_console').value = truncated_ans_str;
+                                    return;
+                                } else {
+                                    if(ans_str.charAt(i) === '.') {
+                                        float_point_reached = 1;
+                                    }
+                                    if(!float_point_reached) {
+                                        truncated_sign_figs_count = truncated_sign_figs_count + 1;
+                                    }
+                                }
+                            }
+                        }
+                        truncated_ans_str = truncated_ans_str + '\u00D7' + '10^' + truncated_sign_figs_count;
+                        document.querySelector('#op_console').value = truncated_ans_str;
+                    }
+                } catch(err) {
+                    current_ip_query = "";
+                    cursor_enabled = 0;
+                    document.querySelector("#ip_exp").value = "ERROR";
+                    document.querySelector('#op_console').value = " ";
+                }
+            }
+
+            function toggle_fullscreen() {
+                var dcmnt_ele = document.documentElement;
+
+                if(!fullscreen_enabled) {
+                    if(dcmnt_ele.requestFullscreen) {
+                        dcmnt_ele.requestFullscreen()
+                            .then(function() {
+                                fullscreen_enabled = 1;
+                                console.log('Successfully entered fullscreen.');
+                            })
+                            .catch(function(error) {
+                                console.log('ERROR: Cannot enter fullscreen.');
+                                console.log(error);
+                            });
+                    } else if(dcmnt_ele.webkitRequestFullscreen) {
+                        dcmnt_ele.webkitRequestFullscreen();
+                        fullscreen_enabled = 1;
+                    } else if(dcmnt_ele.msRequestFullscreen) {
+                        dcmnt_ele.msRequestFullscreen();
+                        fullscreen_enabled = 1;
+                    }
+                } else {
+                    if(document.exitFullscreen) {
+                        document.exitFullscreen()
+                            .then(function() {
+                                fullscreen_enabled = 0;
+                                console.log('Successfully exited fullscreen.');
+                            })
+                            .catch(function(error) {
+                                console.log('ERROR: Cannot exit fullscreen.');
+                                console.log(error);
+                            });
+                    } else if(document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                        fullscreen_enabled = 0;
+                    } else if(document.msExitFullscreen) {
+                        document.msExitFullscreen();
+                        fullscreen_enabled = 0;
+                    }
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+
+                setInterval(cursor_blink, 500);
+
+                document.querySelectorAll('button').forEach(function(btn) {
+                    btn.onclick = function() {
+                        if(btn.id === 'fullscreen') {
+                            toggle_fullscreen();
+                            return;
+                        }
+                        if(document.querySelector("#ip_exp").value === "ERROR") {
+                            if(btn.innerText === 'AC') {
+                                cursor_enabled = 1;
+                                update_ip_exp();
+                                document.querySelector('#op_console').value = "";
+                            } else {
+                                return;
+                            }
+                        }
+                        if(!cursor_enabled) {
+                            if(btn.innerText === 'DEL') {
+                                return;
+                            } else if(btn.innerText === 'AC') {
+                                cursor_enabled = 1;
+                            } else if((btn.className === 'optr') && (btn.innerText !== '(') && (btn.innerText !== ')')) {
+                                current_ip_query = 'Ans';
+                                cursor_enabled = 1;
+                            } else if(btn.innerText !== '\u003D') {
+                                current_ip_query = '';
+                                cursor_enabled = 1;
+                            }
+                        }
+                        if(btn.innerText === 'DEL') {
+                            del_key_pressed();
+                        } else if(btn.innerText === 'AC') {
+                            all_clear_key_pressed();
+                        } else if(btn.innerText === '\u003D') {  //&#61;
+                            calc();
+                        } else {
+                            current_ip_query = current_ip_query + btn.innerText;
+                            update_ip_exp();
+                        }
+                    }
+                });
+
+            });
+        </script>
+    </head>
+    <body>
+    <center>
+            <input id = "ip_exp" size = "12" type = "text" disabled>
+            <br>
+            <input id = "op_console" size = "12" placeholder="0" type = "text" disabled>
+            <br>
+
+
+            <button class = "top_row_btn">DEL</button>
+            <button class = "top_row_btn">AC</button>
+            <br>
+            <button class = "optr">^</button>
+            <button class = "optr">(</button>
+            <button class = "optr">)</button>
+            <button class = "optr">&divide;</button>
+            <br>
+            <button>7</button>
+            <button>8</button>
+            <button>9</button>
+            <button class = "optr">&times;</button>
+            <br>
+            <button>4</button>
+            <button>5</button>
+            <button>6</button>
+            <button class = "optr">&minus;</button>
+            <br>
+            <button>1</button>
+            <button>2</button>
+            <button>3</button>
+            <button class = "optr">&plus;</button>
+            <br>
+            <button>0</button>
+            <button>.</button>
+            <button class = "spcl">Ans</button>
+            <button class = "spcl">&#61;</button>
+
+            <br>
+            <button id = "fullscreen">Fullscreen</button>
+    </center>
+    </body>
+</html>
